@@ -1,61 +1,74 @@
-
-import subprocess
-import lackey
-import time
 import os
+import subprocess
+import sys
+import time
 
-from config.setttings import Settings
+import win32con
+import win32gui
 
-start_icon = "start_icon.PNG"
-tout_accepter = "tout_accepter.PNG"
-trover_une_agence = "trover_une_agence.PNG"
-rue = "rue.PNG"
-code_postal = "code_postal.PNG"
+from config.settings import Settings
 
-# FUNCTION TO OPEN BROWSER
-# GENERIC FUNCTION FOR CLICK AND ENTER
-# HANDLE ERRORS
-# FUNCTION SEARCH ELEMENT ON THE ENTIRE PAGE(SCROLL ALL)
+# Suppress only DeprecationWarnings
+# See: https://github.com/glitchassassin/lackey/issues/127
+sys.stderr = open(os.devnull, "w")
+import lackey
+
+sys.stderr = sys.__stderr__
 
 
-def open_default_browser(settings):
-    """
-    Opens the default browser from settings, using private mode if cookies are not to be stored.
-    """
+def open_browser(settings: Settings):
     browser_paths = {
-        "chrome": (settings.chrome_path, "--incognito"),
-        "edge": (settings.edge_path, "--inprivate"),
-        "firefox": (settings.firefox_path, "-private-window")
+        "chrome": settings.chrome_path,
+        "edge": settings.edge_path,
     }
 
-    browser_path, private_flag = browser_paths.get(settings.default_browser, (None, None))
+    full_command = [
+        browser_paths.get(settings.default_browser),
+        "--incognito",
+        "--start-maximized",
+        "--user-data-dir=c:\\temp",
+    ]
+    # Launch the browser
+    if settings.default_browser == "chrome" or settings.default_browser == "edge":
+        subprocess.Popen(full_command)
+    else:
+        raise Exception("Browser not supported!")
 
-    if not browser_path or not os.path.exists(browser_path):
-        print("Default browser path not found or does not exist.")
-        return
+    # Wait for the browser to open
+    time.sleep(2)
 
-    # Add private mode flag if cookies are not to be stored
-    args = [browser_path] + ([private_flag] if not settings.store_browser_cookies else [])
-    
-    try:
-        subprocess.Popen(["cmd", "/c", "start", "", *args], shell=True)
-        print(f"Opened {settings.default_browser} browser{' in private mode' if private_flag in args else ''}.")
-    except Exception as e:
-        print(f"Failed to open the browser: {e}")
+    # Function to bring the last opened browser window to the foreground and maximize
+    def set_foreground_window():
+        def enum_windows(hwnd, _):
+            # Get the title of the window
+            window_title = win32gui.GetWindowText(hwnd)
+            # Check if the window title matches the browser name
+            if settings.default_browser.lower() in window_title.lower():
+                # Bring the window to the foreground and maximize
+                win32gui.ShowWindow(hwnd, win32con.SW_MAXIMIZE)
+                win32gui.SetForegroundWindow(hwnd)
+
+        win32gui.EnumWindows(enum_windows, None)
+
+    # Set the last opened browser window to foreground and maximize it
+    set_foreground_window()
+
 
 def type_enter(text):
     lackey.type(text)
     lackey.type("{ENTER}")
     time.sleep(2)
 
+
 def click_page(target):
     try:
+        time.sleep(4)
         lackey.click(target)
-        time.sleep(2)
     except lackey.Exceptions.FindFailed:
         print(f"TARGET {target} NOT FOUND.")
         return False
     return True
+
 
 def reset_mouse_pos():
     # Get the center position of the screen
@@ -63,6 +76,7 @@ def reset_mouse_pos():
 
     # Move the mouse to the center position
     lackey.mouseMove(center_position)
+
 
 def search_scroll(target_image):
     scrolling = True
@@ -83,23 +97,41 @@ def search_scroll(target_image):
             # If not found, scroll down and try again
             print("Component not found, scrolling down...")
             # Scroll down 1 steps
-            lackey.wheel(None, lackey.Mouse.WHEEL_DOWN, 1)
-    
+            lackey.wheel(None, lackey.Mouse.WHEEL_DOWN, 5)
 
 
-if __name__ == "__main__":
-    settings = Settings('param.xml')
-    open_default_browser(settings)
+def close_running_window():
+    time.sleep(5)
+    lackey.keyDown("{ALT}")  # Press and hold Alt
+    lackey.type("{F4}")  # Press F4 while Alt is held down
+    lackey.keyUp("{ALT}")  # Release Alt
 
-    type_enter("https://www.banquepopulaire.fr/")
+
+def main():
+
+    settings = Settings("param.xml")
+    open_browser(settings)
+
+    type_enter("www.banquepopulaire.fr")
     click_page(settings.tout_accepter)
-    search_scroll(settings.trover_une_agence)
-    click_page(settings.trover_une_agence)
+    search_scroll(settings.trouver_une_agence)
+    click_page(settings.trouver_une_agence)
 
     click_page(settings.rue_type)
     lackey.type("Lyon")
     click_page(settings.code_postal)
     lackey.type("69000")
 
+    click_page(settings.rechercher_click)
+    click_page(settings.lyon_perrache)
+
+    lackey.find(settings.cinq_agences_banque)
+    click_page(settings.quatre_quatre)
+    lackey.find(settings.quatre_detail)
+
+    close_running_window()
     print("script completed.")
 
+
+if __name__ == "__main__":
+    main()

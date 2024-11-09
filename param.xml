@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<parameters>
+    <defaultBrowser>chrome</defaultBrowser>
+    <paths>
+        <chromePath>C:\Program Files\Google\Chrome\Application\chrome.exe</chromePath>
+        <edgePath>C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe</edgePath>
+        <firefoxPath>C:\Program Files\Mozilla Firefox\firefox.exe</firefoxPath>
+    </paths>
+    <setAutoWaitTimeout>3</setAutoWaitTimeout>
+    <images>
+        <startIcon>images/start_icon.PNG</startIcon>
+        <toutAccepter>images/tout_accepter.PNG</toutAccepter>
+        <trouverUneAgence>images/trover_une_agence.PNG</trouverUneAgence>
+        <rueType>images/rue_type.PNG</rueType>
+        <codePostal>images/code_postal.PNG</codePostal>
+        <rechercherClick>images/rechercher_click.PNG</rechercherClick>]
+        <lyonPerrache>images/lyon_perrache.PNG</lyonPerrache>
+        <cinqAgencesBanque>images/5agences_banque.PNG</cinqAgencesBanque>
+        <quatreQuatre>images/quatre_quatre.PNG</quatreQuatre>
+        <quatreDetail>images/quatre_detail.PNG</quatreDetail>
+    </images>
+</parameters>
