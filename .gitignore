@@ -1,0 +1,21 @@
+# Exclude PyInstaller build and dist directories
+/dist/
+/build/
+
+# Exclude Python bytecode and cache files
+__pycache__/
+
+# Exclude environment management files
+*.log
+
+# Optional: Exclude virtual environment if you're using one
+venv/
+.env/
+
+# Exclude executable output (optional if you want to track generated binaries)
+*.exe
+*.app
+*.dmg
+
+# Exclude requirements since we already have a Pipfile
+requirements.txt
