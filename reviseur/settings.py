@@ -26,7 +26,6 @@ class Settings:
         self.load_settings()
 
     def camel_to_snake(self, camel_str):
-        # Use regex to find positions where lowercase meets uppercase, and insert underscores
         snake_str = re.sub(r"(?<!^)(?=[A-Z])", "_", camel_str).lower()
         return snake_str
 
@@ -41,9 +40,7 @@ class Settings:
                 text = elem.text
 
                 tag = self.camel_to_snake(tag)
-                print("------>", tag)
 
-                # Set attribute if it exists in the class
                 if hasattr(self, tag):
                     value = int(text) if text.isdigit() else text
                     setattr(self, tag, value)
@@ -54,7 +51,3 @@ class Settings:
             print(f"Error parsing XML file: {e}")
         except Exception as e:
             print(f"Error loading settings: {e}")
-
-    def __str__(self):
-        attrs = [f"{attr}: {getattr(self, attr)}" for attr in vars(self)]
-        return "\n".join(attrs)

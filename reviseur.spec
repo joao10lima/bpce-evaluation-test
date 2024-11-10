@@ -2,10 +2,10 @@
 
 
 a = Analysis(
-    ['main.py'],
+    ['reviseur\\main.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('./images', 'images')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='main',
+    name='reviseur',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

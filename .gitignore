@@ -19,3 +19,7 @@ venv/
 
 # Exclude requirements since we already have a Pipfile
 requirements.txt
+
+screenshots/
+reports/
+captures/

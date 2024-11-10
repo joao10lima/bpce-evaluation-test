@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "96521010888298a12718f41c68eb5da855ed6925cb271b559769910706b7756d"
+            "sha256": "2ab8617a54f532e236d563532a676c83fa4ecd00915cfcadb85a8efe241071c2"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -23,6 +23,14 @@
             ],
             "markers": "python_version >= '3.6'",
             "version": "==2024.8.30"
+        },
+        "chardet": {
+            "hashes": [
+                "sha256:1b3b6ff479a8c414bc3fa2c0852995695c4a026dcd6d0633b2dd092ca39c1cf7",
+                "sha256:e1cf59446890a00105fe7b7912492ea04b6e6f06d4b742b2c788469e34c82970"
+            ],
+            "markers": "python_version >= '3.7'",
+            "version": "==5.2.0"
         },
         "charset-normalizer": {
             "hashes": [
@@ -342,6 +350,15 @@
             ],
             "index": "pypi",
             "version": "==308"
+        },
+        "reportlab": {
+            "hashes": [
+                "sha256:5cf35b8fd609b68080ac7bbb0ae1e376104f7d5f7b2d3914c7adc63f2593941f",
+                "sha256:eb2745525a982d9880babb991619e97ac3f661fae30571b7d50387026ca765ee"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.7' and python_version < '4'",
+            "version": "==4.2.5"
         },
         "requests": {
             "hashes": [
