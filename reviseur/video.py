@@ -1,79 +1,87 @@
+import logging
+import os
 import pathlib
+import shutil
+import signal
+import sys
+import threading
 from datetime import datetime
 
 import cv2
+import mss
 import numpy as np
-import win32api
-import win32con
-import win32gui
-import win32ui
 
 
 class Video:
-    def __init__(self, fps=1):
+    def __init__(self, driver):
         datetime_now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        pathlib.Path("captures/").mkdir(parents=True, exist_ok=True)
-        self.output_filename = f"captures/screen_capture_{datetime_now}.mp4"
-        self.screen_width = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
-        self.screen_height = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
-        self.screen_size = (self.screen_width, self.screen_height)
-        self.fps = fps
+        self.path = pathlib.Path("captures/")
+        self.screenshot_path = pathlib.Path("screenshots/")
+        self.output_filename = f"captures/screen_capture_{datetime_now}.avi"
         self.screenshot_count = 0
+        self.stop_recording_event = threading.Event()
+        self.record_thread = threading.Thread(
+            target=self.record_screen, args=(self.stop_recording_event,)
+        )
+        self.driver = driver
+        self.clean_up()
 
-        self.out = cv2.VideoWriter(
+    def clean_up(self):
+        self.path.mkdir(parents=True, exist_ok=True)
+        shutil.rmtree(str(self.screenshot_path))
+        self.screenshot_path.mkdir(parents=True, exist_ok=True)
+
+    def record_screen(self, stop_recording_event):
+        self.screen = mss.mss()
+        monitor = self.screen.monitors[1]
+        out = cv2.VideoWriter(
             self.output_filename,
-            cv2.VideoWriter_fourcc(*"mp4v"),
-            self.fps,
-            self.screen_size,
+            cv2.VideoWriter_fourcc(*"XVID"),
+            20.0,
+            (monitor["width"], monitor["height"]),
         )
-
-    def capture_screen(self):
-        hwin = win32gui.GetDesktopWindow()
-        hwindc = win32gui.GetWindowDC(hwin)
-        srcdc = win32ui.CreateDCFromHandle(hwindc)
-        memdc = srcdc.CreateCompatibleDC()
-
-        # Create a bitmap to hold the screenshot
-        bmp = win32ui.CreateBitmap()
-        bmp.CreateCompatibleBitmap(srcdc, self.screen_width, self.screen_height)
-        memdc.SelectObject(bmp)
-        memdc.BitBlt(
-            (0, 0),
-            (self.screen_width, self.screen_height),
-            srcdc,
-            (0, 0),
-            win32con.SRCCOPY,
-        )
-
-        # Convert the bitmap to a numpy array for OpenCV
-        bmp_info = bmp.GetInfo()
-        bmp_data = bmp.GetBitmapBits(True)
-        img = np.frombuffer(bmp_data, dtype=np.uint8)
-        img.shape = (bmp_info["bmHeight"], bmp_info["bmWidth"], 4)
-
-        # Convert the image from BGRA to BGR for OpenCV compatibility
-        frame = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-
-        # Release resources
-        memdc.DeleteDC()
-        win32gui.ReleaseDC(hwin, hwindc)
-        win32gui.DeleteObject(bmp.GetHandle())
-
-        return frame
+        try:
+            while not stop_recording_event.is_set():
+                screenshot = self.driver.get_screenshot_as_png()
+                frame = cv2.imdecode(
+                    np.frombuffer(screenshot, np.uint8), cv2.IMREAD_COLOR
+                )
+                frame_resized = cv2.resize(
+                    frame, (monitor["width"], monitor["height"])
+                )
+                out.write(frame_resized)
+        finally:
+            out.release()
 
     def save_screenshot(self, filename):
-        frame = self.capture_screen()
-        pathlib.Path("screenshots/").mkdir(parents=True, exist_ok=True)
+        screen = mss.mss()
+        monitor = screen.monitors[1]
+        screenshot = screen.grab(monitor)
         cv2.imwrite(
-            "screenshots/" + f"{self.screenshot_count}_" + filename + ".png", frame
+            "screenshots/" + f"{self.screenshot_count}_" + filename + ".png",
+            np.array(screenshot),
         )
-        print(f"Screenshot saved as {filename}")
+        pathlib.Path("screenshots/").mkdir(parents=True, exist_ok=True)
+        self.path.mkdir(parents=True, exist_ok=True)
+        logging.info(f"Screenshot saved as {filename}")
         self.screenshot_count += 1
-        return frame
 
-    def write_frame(self, frame):
-        self.out.write(frame)
+    def start_screen_rec(self):
+        def signal_handler(sig, frame):
+            logging.info("\nCtrl+C detected! Exiting...")
+            self.stop_recording_event.set()
+            sys.exit(1)
 
-    def end_record(self):
-        self.out.release()
-        cv2.destroyAllWindows()
+        signal.signal(signal.SIGINT, signal_handler)
+
+        self.record_thread.start()
+
+    def end_screen_record(self, persist_video=False):
+        self.stop_recording_event.set()
+        self.record_thread.join()
+
+        if not persist_video:
+            logging.info("Deleting file: " + self.output_filename)
+            os.remove(self.output_filename)
+
+        logging.info("Recording stopped.")

@@ -1,0 +1,59 @@
+name: Python CI with PyInstaller, Flake8, Black, and Isort
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'  # Change to your desired Python version
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pipenv
+          pipenv install
+          pipenv install --dev
+
+      - name: Lint with flake8
+        run: |
+          pip install flake8
+          flake8 .  # Adjust this as needed
+
+      - name: Format code with black
+        run: |
+          pip install black
+          black --check .
+
+      - name: Sort imports with isort
+        run: |
+          pip install isort
+          pipenv run isort --check --profile black .
+
+      - name: Package the script using PyInstaller
+        run: |
+          .\build.bat
+
+      - name: Upload PyInstaller Executable
+        uses: actions/upload-artifact@v3
+        with:
+          name: packaged-script
+          path: |
+            dist/reviseur.exe
+            dist/param.xml
+      - name: Clean up
+        run: |
+          rm -rf build dist  # Clean up the build and dist folders
+

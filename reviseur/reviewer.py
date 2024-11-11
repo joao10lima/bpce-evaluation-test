@@ -1,163 +1,200 @@
+import logging
 import os
-import subprocess
 import sys
 import time
-from pathlib import Path
 
-import win32con
-import win32gui
-
-from reviseur.settings import Settings
-from reviseur.video import Video
+import cv2
+import numpy as np
+from report import Report
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
+from selenium.webdriver.edge.service import Service
+from settings import Settings
+from video import Video
 
 # Suppress only DeprecationWarnings
 # See: https://github.com/glitchassassin/lackey/issues/127
 sys.stderr = open(os.devnull, "w")
-import lackey
+import lackey  # noqa: E402
 
 sys.stderr = sys.__stderr__
 
 
 class Reviseur:
 
-    def __init__(self, settings, video: Video):
-        self.settings = settings
+    def __init__(self, settings):
+        self.settings: Settings = settings
         # Atributing here in case we need further configuration
         self.lackey: lackey = lackey
-        self.video = video
 
-    def open_browser(self):
-        browser_paths = {
-            "chrome": self.settings.chrome_path,
-            "edge": self.settings.edge_path,
-        }
+    def click_element(self, element):
+        element.click()
+        time.sleep(1)
 
-        full_command = [
-            browser_paths.get(self.settings.default_browser),
-            (
-                "--incognito"
-                if self.settings.default_browser == "chrome"
-                else "--inprivate"
-            ),
-        ]
-        # Launch the browser
+    def lackey_compare(self, expected, actual, threshold=0.9):
+        template = cv2.imread(expected, 0)
+        actual = cv2.imread(actual, 0)
+
         if (
-            self.settings.default_browser == "chrome"
-            or self.settings.default_browser == "edge"
+            template.shape[0] > actual.shape[0]
+            or template.shape[1] > actual.shape[1]
         ):
-            subprocess.Popen(full_command)
-        else:
-            raise Exception("Browser not supported!")
-
-        # Wait for the browser to open
-        time.sleep(2)
-
-        # Function to bring the last opened browser window to the foreground and maximize
-        def set_foreground_window():
-            def enum_windows(hwnd, _):
-                # Get the title of the window
-                window_title = win32gui.GetWindowText(hwnd)
-                # Check if the window title matches the browser name
-                full_browser_name = {
-                    "edge": "Microsoft Edge",
-                    "chrome": "Google Chrome",
-                    "firefox": "Firefox",
-                }
-                if (
-                    full_browser_name[self.settings.default_browser].lower()
-                    in window_title.lower()
-                ):
-                    # Bring the window to the foreground and maximize
-                    win32gui.ShowWindow(hwnd, win32con.SW_MAXIMIZE)
-                    win32gui.SetForegroundWindow(hwnd)
-
-            win32gui.EnumWindows(enum_windows, None)
-
-        # Set the last opened browser window to foreground and maximize it
-        set_foreground_window()
-
-    def type_enter(self, text):
-        self.lackey.type(text)
-        self.lackey.type("{ENTER}")
-        time.sleep(2)
-        self.video.write_frame(self.video.save_screenshot(f"type_{text[:5]}"))
-
-    def click_page(self, target):
-        target_stem = Path(target).stem
-        try:
-            time.sleep(5)
-            self.video.write_frame(
-                self.video.save_screenshot(f"click_page_{target_stem}_1")
+            scale_factor = min(
+                actual.shape[0] / template.shape[0],
+                actual.shape[1] / template.shape[1],
             )
-            self.lackey.click(target)
-            self.video.write_frame(
-                self.video.save_screenshot(f"click_page_{target_stem}_2")
+            template = cv2.resize(
+                template, (0, 0), fx=scale_factor, fy=scale_factor
             )
-        except self.lackey.Exceptions.FindFailed:
-            print(f"TARGET {target} NOT FOUND.")
-            return False
-        return True
 
-    def reset_mouse_pos(self):
-        # Move the mouse to the center position
-        self.lackey.mouseMove(self.lackey.Screen().getCenter())
+        template = template[: actual.shape[0], : actual.shape[1]]
+        difference = cv2.matchTemplate(actual, template, cv2.TM_CCOEFF_NORMED)
 
-    def search_scroll(self, target_image):
-        scrolling = True
-        target_stem = Path(target_image).stem
+        loc = np.where(difference >= threshold)
+        logging.info(f"{self.step} Difference Score of: {len(loc[0])}")
+        if len(loc[0]) > 100:
+            logging.info(
+                "Expected image don't match actual page! Preparing Report..."
+            )
+            raise Exception("Inconsistency")
 
-        # Reset mouse to center preparing for scrolling
-        self.reset_mouse_pos()
+    def step_tout_acepter(self, driver):
+        self.step = "1_tout_acepter"
+        driver.get("https://www.banquepopulaire.fr")
+        driver.save_screenshot("screenshots/tout_acepter_before_click.png")
+        self.lackey_compare(
+            self.settings.tout_accepter,
+            "screenshots/tout_acepter_before_click.png",
+        )
 
-        iteration_count = 0
-        # Reduce timeout for faster scrolling
-        self.lackey.setAutoWaitTimeout(0.1)
-        while scrolling:
-            try:
-                target_region = self.lackey.find(target_image)
-                print("Component found at:", target_region)
-                # Returning speed to default
-                self.lackey.setAutoWaitTimeout(3)
-                self.video.write_frame(self.video.save_screenshot(target_stem))
-                return target_region
-            except self.lackey.FindFailed:
-                # If not found, scroll down and try again
-                print("Component not found, scrolling down...")
-                # Scroll down 1 steps
-                self.lackey.wheel(None, self.lackey.Mouse.WHEEL_DOWN, 5)
-                self.video.write_frame(self.video.capture_screen())
-            iteration_count += 1
+    def step_consent_prompt_submit(self, driver):
+        self.step = "2_consent_prompt_submit"
+        consent_prompt_submit = driver.find_element(
+            By.ID, "consent_prompt_submit"
+        )
+        self.click_element(consent_prompt_submit)
 
-    def close_running_window(self):
-        time.sleep(3)
-        self.lackey.keyDown("{ALT}")  # Press and hold Alt
-        self.lackey.type("{F4}")  # Press F4 while Alt is held down
-        self.lackey.keyUp("{ALT}")  # Release Alt
+    def step_trouver_une_agence(self, driver):
+        self.step = "3_trouver_une_agence"
+        agence = driver.find_element(
+            By.XPATH,
+            "//p[@class='font-text-body-bold']"
+            + "[normalize-space()='Trouver une agence']",
+        )
+        actions = ActionChains(driver)
+        actions.move_to_element(agence).perform()
+        driver.execute_script("window.scrollBy(0, 1000);")
+        time.sleep(1)
+        driver.save_screenshot("screenshots/trouver_une_agence_click.png")
+        self.lackey_compare(
+            self.settings.trouver_une_agence,
+            "screenshots/trouver_une_agence_click.png",
+        )
+        self.click_element(agence)
+
+    def step_rue_search(self, driver):
+        self.step = "4_rue_search"
+        rue_search = driver.find_element(By.ID, "em-search-form__searchstreet")
+        self.click_element(rue_search)
+        rue_search.send_keys("Lyon")
+        driver.save_screenshot("screenshots/type_rue_search.png")
+        self.lackey_compare(
+            self.settings.rue_type,
+            "screenshots/type_rue_search.png",
+        )
+
+    def step_code_postal(self, driver):
+        self.step = "5_code_postal"
+        code_postal = driver.find_element(By.ID, "em-search-form__searchcity")
+        self.click_element(code_postal)
+        code_postal.send_keys("69000")
+        driver.save_screenshot("screenshots/type_code_postal.png")
+        self.lackey_compare(
+            self.settings.code_postal,
+            "screenshots/type_code_postal.png",
+        )
+
+    def step_submit_addr(self, driver):
+        self.step = "6_submit_addr"
+        submit_addr = driver.find_element(
+            By.XPATH,
+            '//*[@id="em-search-form"]/div/div[2]/fieldset[2]/div[2]/button',
+        )
+        self.click_element(submit_addr)
+        driver.save_screenshot("screenshots/rechercher_click.png")
+        self.lackey_compare(
+            self.settings.rechercher_click,
+            "screenshots/rechercher_click.png",
+        )
+
+    def step_geocoder(self, driver):
+        self.step = "7_geocoder"
+        geocoder = driver.find_element(
+            By.XPATH, '//*[@id="cgeocoder29_street_1"]'
+        )
+        self.click_element(geocoder)
+        time.sleep(8)
+        driver.save_screenshot("screenshots/find_cinq_agences_banque.png")
+        self.lackey_compare(
+            self.settings.cinq_agences_banque,
+            "screenshots/find_cinq_agences_banque.png",
+        )
+
+    def step_quatre_detail(self, driver):
+        self.step = "8_quatre_detail"
+        quatre_detail = driver.find_element(
+            By.XPATH,
+            "/html/body/div[2]/main/div[2]/div/div[3]/div/div/div/"
+            + "div[1]/div[6]/div[2]",
+        )
+        ActionChains(driver).move_to_element(quatre_detail).move_by_offset(
+            0, 0
+        ).click().perform()
+        time.sleep(5)
+        driver.save_screenshot("screenshots/find_quatre_detail.png")
+        self.lackey_compare(
+            self.settings.quatre_detail,
+            "screenshots/find_quatre_detail.png",
+        )
 
     def workflow_banque_populaire(self):
-        settings = Settings("param.xml")
-        self.open_browser()
+        options = Options()
+        options.add_argument("--headless")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920x1080")
+        options.add_argument(
+            "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            + "AppleWebKit/537.36 (KHTML, like Gecko) "
+            + "Chrome/91.0.4472.124 Safari/537.36"
+        )
+        if self.settings.default_browser == "edge":
+            edge_service = Service(self.settings.edge_path)
+            driver = webdriver.Edge(options=options, service=edge_service)
+        else:
+            driver = webdriver.Chrome(options=options)
 
-        self.type_enter("www.banquepopulaire.fr")
-        self.click_page(self.settings.tout_accepter)
-        self.search_scroll(self.settings.trouver_une_agence)
-        self.click_page(self.settings.trouver_une_agence)
+        driver.maximize_window()
+        video = Video(driver)
+        try:
+            video.start_screen_rec()
 
-        self.click_page(self.settings.rue_type)
-        self.lackey.type("Lyon")
-        self.video.write_frame(self.video.save_screenshot(f"type_Lyon"))
-        self.click_page(self.settings.code_postal)
-        self.lackey.type("69000")
-        self.video.write_frame(self.video.save_screenshot(f"type_69000"))
+            self.step_tout_acepter(driver)
+            self.step_consent_prompt_submit(driver)
+            self.step_trouver_une_agence(driver)
+            self.step_rue_search(driver)
+            self.step_code_postal(driver)
+            self.step_submit_addr(driver)
+            self.step_geocoder(driver)
+            self.step_quatre_detail(driver)
 
-        self.click_page(self.settings.rechercher_click)
-        self.click_page(self.settings.lyon_perrache)
+            video.end_screen_record()
+        except Exception as err:
+            logging.exception("Error: %s", err)
+            driver.save_screenshot(f"screenshots/FAILED_{self.step}.png")
+            video.end_screen_record(persist_video=True)
+            report = Report()
+            report.generate_report(video.output_filename)
 
-        self.lackey.find(self.settings.cinq_agences_banque)
-        self.video.write_frame(self.video.save_screenshot(f"find_cinq_agences_banque"))
-        self.click_page(self.settings.quatre_quatre)
-        self.lackey.find(settings.quatre_detail)
-        self.video.write_frame(self.video.save_screenshot(f"find_quatre_detail"))
-        self.close_running_window()
-        self.video.end_record()
-        print("script completed.")
+        driver.quit()

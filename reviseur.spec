@@ -5,7 +5,7 @@ a = Analysis(
     ['reviseur\\main.py'],
     pathex=[],
     binaries=[],
-    datas=[('./images', 'images')],
+    datas=[],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

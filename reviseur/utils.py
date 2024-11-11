@@ -1,15 +1,17 @@
 import logging
+import pathlib
 import sys
 from datetime import datetime
 
 
 def initialize_logs():
+    pathlib.Path("logs/").mkdir(parents=True, exist_ok=True)
     datetime_now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
         handlers=[
-            logging.FileHandler(f"revisur_log_run_{datetime_now}.log"),
+            logging.FileHandler(f"logs/revisur_log_run_{datetime_now}.log"),
             logging.StreamHandler(sys.stdout),
         ],
     )
