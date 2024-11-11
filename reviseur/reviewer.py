@@ -1,5 +1,6 @@
 import logging
 import os
+import pathlib
 import sys
 import time
 
@@ -29,6 +30,7 @@ class Reviseur:
 
     def __init__(self, settings):
         self.settings: Settings = settings
+        pathlib.Path("screenshots/").mkdir(parents=True, exist_ok=True)
         # Atributing here in case we need further configuration
         self.lackey: lackey = lackey
 

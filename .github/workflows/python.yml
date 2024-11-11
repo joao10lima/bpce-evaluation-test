@@ -53,5 +53,6 @@ jobs:
           path: |
             dist/reviseur.exe
             dist/param.xml
+            dist/images
 
 
