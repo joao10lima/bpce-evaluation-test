@@ -3,16 +3,19 @@ import os
 import sys
 import time
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 import cv2
 import numpy as np
-from report import Report
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.edge.service import Service
-from settings import Settings
-from video import Video
+
+from reviseur.report import Report
+from reviseur.settings import Settings
+from reviseur.video import Video
 
 # Suppress only DeprecationWarnings
 # See: https://github.com/glitchassassin/lackey/issues/127

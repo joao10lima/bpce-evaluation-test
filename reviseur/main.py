@@ -1,8 +1,11 @@
+import os
+import sys
 import time
 
-from reviewer import Reviseur
-from settings import Settings
-from utils import initialize_logs
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from reviseur.reviewer import Reviseur
+from reviseur.settings import Settings
+from reviseur.utils import initialize_logs
 
 initialize_logs()
 
