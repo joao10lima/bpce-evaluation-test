@@ -53,7 +53,5 @@ jobs:
           path: |
             dist/reviseur.exe
             dist/param.xml
-      - name: Clean up
-        run: |
-          rm -rf build dist  # Clean up the build and dist folders
+
 
