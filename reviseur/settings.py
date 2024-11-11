@@ -4,7 +4,20 @@ from typing import Optional
 
 
 class Settings:
+    """
+    Settings command class thre responsability
+    to manage all the configuration imported from
+    the param.xml
+    """
+
     def __init__(self, xml_file):
+        """This attributes will be loaded
+        from the xml and stored in this
+        class initilization attrs.
+
+        Args:
+            xml_file (str): path to xmlfile
+        """
         self.xml_file = xml_file
         # Initialize attributes with types for autocomplete support
         self.default_browser: Optional[str] = None
@@ -26,10 +39,24 @@ class Settings:
         self.load_settings()
 
     def camel_to_snake(self, camel_str):
+        """Simple convert camelCase to snake_case
+
+        Args:
+            camel_str (str): text in camelCase
+
+        Returns:
+            str: text in snake_case
+        """
         snake_str = re.sub(r"(?<!^)(?=[A-Z])", "_", camel_str).lower()
         return snake_str
 
     def load_settings(self):
+        """
+        Read and parse the XML description
+        here we dynamically set the attrs
+        converting their tag to the declared
+        ones in the initialization of the class
+        """
         try:
             tree = ET.parse(self.xml_file)
             root = tree.getroot()

@@ -27,18 +27,57 @@ sys.stderr = sys.__stderr__
 
 
 class Reviseur:
+    """Most important class that manages
+    the selenium driver and has an algorithm
+    of comparison between the images defined
+    in the XML against the ones saved by
+    the browser driver itself.
+    """
 
     def __init__(self, settings):
+        """Initiates the reviseur class by
+        defining the settings and lackey
+        functions.
+
+        Args:
+            settings (Settings): Settings from the XML
+        """
         self.settings: Settings = settings
         pathlib.Path("screenshots/").mkdir(parents=True, exist_ok=True)
         # Atributing here in case we need further configuration
         self.lackey: lackey = lackey
 
     def click_element(self, element):
+        """Click the element and wait
+        a time before returning
+
+        Args:
+            element (driver): driver element
+        """
         element.click()
         time.sleep(1)
 
     def lackey_compare(self, expected, actual, threshold=0.9):
+        """This function is based on the following article:
+        https://docs.opencv.org/3.4/d4/dc6/tutorial_py_template_matching.html
+
+        With this we can receive images from the xml and check them
+        against the full screen renderization of the selenium driver
+
+        It is configurable with a threshold that indicate the differece
+        between the images.
+
+        So it functions like an assert() if not asserted them
+        e generate a report and video.
+
+        Args:
+            expected (str): path to image from the .xml
+            actual (str): path to image generate by selenium
+            threshold (float, optional): algorithm threshold.
+
+        Raises:
+            Exception: Image is not compatible to what the driver sees
+        """
         template = cv2.imread(expected, 0)
         actual = cv2.imread(actual, 0)
 
@@ -66,6 +105,11 @@ class Reviseur:
             raise Exception("Inconsistency")
 
     def step_tout_acepter(self, driver):
+        """First step accept the cookie warning
+
+        Args:
+            driver: Selenium Driver
+        """
         self.step = "1_tout_acepter"
         driver.get("https://www.banquepopulaire.fr")
         driver.save_screenshot("screenshots/tout_acepter_before_click.png")
@@ -75,6 +119,11 @@ class Reviseur:
         )
 
     def step_consent_prompt_submit(self, driver):
+        """Second step click the consent prompt
+
+        Args:
+            driver: Selenium Driver
+        """
         self.step = "2_consent_prompt_submit"
         consent_prompt_submit = driver.find_element(
             By.ID, "consent_prompt_submit"
@@ -82,6 +131,12 @@ class Reviseur:
         self.click_element(consent_prompt_submit)
 
     def step_trouver_une_agence(self, driver):
+        """Third step scroll to an element
+        then click in them
+
+        Args:
+            driver: Selenium Driver
+        """
         self.step = "3_trouver_une_agence"
         agence = driver.find_element(
             By.XPATH,
@@ -100,6 +155,12 @@ class Reviseur:
         self.click_element(agence)
 
     def step_rue_search(self, driver):
+        """Fourth step type the name of
+        the street
+
+        Args:
+            driver: Selenium Driver
+        """
         self.step = "4_rue_search"
         rue_search = driver.find_element(By.ID, "em-search-form__searchstreet")
         self.click_element(rue_search)
@@ -111,6 +172,11 @@ class Reviseur:
         )
 
     def step_code_postal(self, driver):
+        """Fifth step type the postal code
+
+        Args:
+            driver: Selenium Driver
+        """
         self.step = "5_code_postal"
         code_postal = driver.find_element(By.ID, "em-search-form__searchcity")
         self.click_element(code_postal)
@@ -122,6 +188,12 @@ class Reviseur:
         )
 
     def step_submit_addr(self, driver):
+        """Sixth step click on the rechercher
+        button
+
+        Args:
+            driver: Selenium Driver
+        """
         self.step = "6_submit_addr"
         submit_addr = driver.find_element(
             By.XPATH,
@@ -135,6 +207,12 @@ class Reviseur:
         )
 
     def step_geocoder(self, driver):
+        """Seventh click on the right
+        address in the list
+
+        Args:
+            driver: Selenium Driver
+        """
         self.step = "7_geocoder"
         geocoder = driver.find_element(
             By.XPATH, '//*[@id="cgeocoder29_street_1"]'
@@ -148,6 +226,13 @@ class Reviseur:
         )
 
     def step_quatre_detail(self, driver):
+        """Eighth step hover the mouse
+        over the quatre image and check
+        if new content is loaded
+
+        Args:
+            driver: Selenium Driver
+        """
         self.step = "8_quatre_detail"
         quatre_detail = driver.find_element(
             By.XPATH,
@@ -165,6 +250,14 @@ class Reviseur:
         )
 
     def workflow_banque_populaire(self):
+        """Describes the general workflow
+        - Start the Selenium Driver
+        - Start the video record
+        - Check the default browser
+        - Do all the steps
+        - In case of error call report and
+        persist the video file
+        """
         options = Options()
         options.add_argument("--headless")
         options.add_argument("--disable-gpu")

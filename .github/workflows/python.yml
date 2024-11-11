@@ -42,6 +42,11 @@ jobs:
           pip install isort
           pipenv run isort --check --profile black .
 
+      - name: Checks code for missing docstrings
+        run: |
+          pip install interrogate
+          pipenv run interrogate -vv .
+
       - name: Package the script using PyInstaller
         run: |
           .\build.bat

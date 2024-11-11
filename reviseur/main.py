@@ -11,6 +11,9 @@ initialize_logs()
 
 
 def main():
+    """Simple loop to run the monitoring
+    each 5 minutes.
+    """
     while True:
         settings = Settings("param.xml")
         reviseur = Reviseur(settings)
@@ -20,4 +23,5 @@ def main():
 
 
 if __name__ == "__main__":
+    """Main function"""
     main()

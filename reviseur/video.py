@@ -13,7 +13,20 @@ import numpy as np
 
 
 class Video:
+    """
+    This class control the video record which happens
+    on separate thread and is responsible for defining
+    video format and their folders.
+    """
+
     def __init__(self, driver):
+        """The video class initializes by
+        defining the captures path and
+        the thread to be open.
+
+        Args:
+            driver (driver): selenium driver
+        """
         datetime_now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         self.path = pathlib.Path("captures/")
         self.screenshot_path = pathlib.Path("screenshots/")
@@ -27,11 +40,28 @@ class Video:
         self.clean_up()
 
     def clean_up(self):
+        """At the start of each execution we must
+        clean the the screenshot path since is from them
+        we do comparisons
+        """
         self.path.mkdir(parents=True, exist_ok=True)
         shutil.rmtree(str(self.screenshot_path))
         self.screenshot_path.mkdir(parents=True, exist_ok=True)
 
     def record_screen(self, stop_recording_event):
+        """With MSS lib we take machine monitor
+        default dimensions to define the video size.
+        After since we are in thread we run until
+        the event passed is false.
+
+        To construct the video we take Selenium screenshots
+        for each frame. The interesting part is that we can do
+        that even in the headless mode.
+
+        Args:
+            stop_recording_event (thread_event): is a passed
+            event which indicates that the recording must stop
+        """
         self.screen = mss.mss()
         monitor = self.screen.monitors[1]
         out = cv2.VideoWriter(
@@ -53,21 +83,20 @@ class Video:
         finally:
             out.release()
 
-    def save_screenshot(self, filename):
-        screen = mss.mss()
-        monitor = screen.monitors[1]
-        screenshot = screen.grab(monitor)
-        cv2.imwrite(
-            "screenshots/" + f"{self.screenshot_count}_" + filename + ".png",
-            np.array(screenshot),
-        )
-        pathlib.Path("screenshots/").mkdir(parents=True, exist_ok=True)
-        self.path.mkdir(parents=True, exist_ok=True)
-        logging.info(f"Screenshot saved as {filename}")
-        self.screenshot_count += 1
-
     def start_screen_rec(self):
+        """Initiates the thread but before
+        add a signal handler so we can terminate
+        with a Ctrl+c
+        """
+
         def signal_handler(sig, frame):
+            """Handle the signal to force
+            the event closure.
+
+            Args:
+                sig (int): int of the signal received
+                frame (exec): frame
+            """
             logging.info("\nCtrl+C detected! Exiting...")
             self.stop_recording_event.set()
             sys.exit(1)
@@ -77,6 +106,13 @@ class Video:
         self.record_thread.start()
 
     def end_screen_record(self, persist_video=False):
+        """Here we send the event to close the thread
+        recording the video.
+
+        Args:
+            persist_video (bool, optional): If the execution did not
+        give any errors we discard the video file. Defaults to False.
+        """
         self.stop_recording_event.set()
         self.record_thread.join()
 

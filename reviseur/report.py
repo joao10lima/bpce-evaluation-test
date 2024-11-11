@@ -11,7 +11,17 @@ from reportlab.pdfgen import canvas
 
 
 class Report:
+    """Describes the generation of reports
+    based on the screenshots save by the selenium
+    driver. It must create a PDF in it describe
+    all the steps until the error who blocked
+    the continuation.
+    """
+
     def __init__(self):
+        """Initiates the report by creating the screenshot
+        folder and setting the canvas to be worked upon.
+        """
         datetime_now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         self.image_dir = "screenshots/"
         pathlib.Path("reports/").mkdir(parents=True, exist_ok=True)
@@ -20,12 +30,25 @@ class Report:
         self.title = f"{datetime_now}\nReport for banquepopulaire.fr"
 
     def generate_report(self, video_path):
+        """Create the tiple page and add
+        the images in order to PDF.
+
+        Args:
+            video_path (str): recorded video location
+        """
         self.create_title_page(video_path)
         self.add_image_pages()
         self.canvas.save()
         logging.info(f"PDF saved: {self.output_pdf}")
 
     def create_title_page(self, video_path):
+        """Creates the title page in the PDF
+        report adding the path to the recorded
+        video of the run.
+
+        Args:
+            video_path (str): Path to the execution video
+        """
         self.canvas.setFont("Helvetica-Bold", 24)
 
         page_width, page_height = A4
@@ -47,6 +70,10 @@ class Report:
         self.canvas.showPage()
 
     def add_image_pages(self):
+        """Loop over the screenshots taken
+        on the reviewer process and join them
+        in the PDF.
+        """
         # Loop over images and add them to the report
         image_files = sorted(
             (
@@ -61,6 +88,18 @@ class Report:
             self.add_image_page(entry.path)
 
     def sanitize_filename(self, filename):
+        """Given that the filename for the
+        snapshots generated in the reviewer
+        tell the right steps that were taken
+        we simply use them in a better format
+        for visualization.
+
+        Args:
+            filename (str): path to file
+
+        Returns:
+            str: str
+        """
         base_name = filename.rsplit(".", 1)[0]
         base_name = base_name.replace("_", " ")
         base_name = " ".join(
@@ -73,6 +112,13 @@ class Report:
         return f"Step {step_number} {base_name[len(step_number):].strip()}"
 
     def add_image_page(self, image_path):
+        """Join any image from the steps taken
+        and add to it a text that changes in case
+        of error.
+
+        Args:
+            image_path (str): Screenshot to be added
+        """
         screenshot = Image.open(image_path)
         aspect_ratio = screenshot.width / screenshot.height
         new_width = 400
