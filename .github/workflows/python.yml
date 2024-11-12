@@ -45,7 +45,12 @@ jobs:
       - name: Checks code for missing docstrings
         run: |
           pip install interrogate
-          pipenv run interrogate -vv .
+          pipenv run interrogate -M --exclude test/ -vv .
+
+      - name: Run unit tests
+        run: |
+          pip install pytest
+          pipenv run pytest -s .\tests\
 
       - name: Package the script using PyInstaller
         run: |

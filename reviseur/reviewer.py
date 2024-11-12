@@ -96,6 +96,10 @@ class Reviseur:
         template = template[: actual.shape[0], : actual.shape[1]]
         difference = cv2.matchTemplate(actual, template, cv2.TM_CCOEFF_NORMED)
 
+        # Here we separate all the parts of image that were out
+        # of the threshold and depending of number of parts
+        # we assume that the image is too diferent hence
+        # raising an Exception
         loc = np.where(difference >= threshold)
         logging.info(f"{self.step} Difference Score of: {len(loc[0])}")
         if len(loc[0]) > 100:

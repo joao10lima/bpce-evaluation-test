@@ -16,6 +16,8 @@ black = "*"
 isort = "*"
 flake8-bugbear = "*"
 interrogate = "*"
+pytest = "*"
+freezegun = "*"
 
 [requires]
 python_version = "3.11"
